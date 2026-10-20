@@ -1,5 +1,5 @@
 
-# 10. Population structure analysis (fastStructure)
+# 06. Population structure analysis (fastStructure)
 
 Population genetic structure was evaluated using fastStructure with a logistic prior. Analyses were performed independently for neutral SNPs, consensus outliers (29 SNPs), FST outliers (19 SNPs), and RDA candidates (64 SNPs), testing K = 1–8 with 10 replicate runs per K.
 
