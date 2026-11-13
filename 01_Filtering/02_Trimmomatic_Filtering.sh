@@ -1,5 +1,5 @@
 
-
+# Select the appropriate modules for Trimmomatic
 module load spack
 module load trimmomatic
 
