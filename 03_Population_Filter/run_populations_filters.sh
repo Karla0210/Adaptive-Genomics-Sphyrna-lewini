@@ -1,5 +1,9 @@
 #!/bin/bash
 
+
+module purge
+module load stacks/2.62
+
 # Input files and directories
 STACKS_DIR="/home/2ebioinfo/DATOS_KARLA/stacks_final"
 POPMAP="/home/2ebioinfo/DATOS_KARLA/info/PopMap.txt"
