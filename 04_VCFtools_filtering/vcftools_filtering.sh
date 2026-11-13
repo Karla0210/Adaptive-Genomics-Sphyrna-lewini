@@ -1,12 +1,8 @@
 
-# 04. VCF filtering
-
-Missing data per individual and per locus were assessed using VCFtools. Selected individuals were removed, and missing data were reassessed before applying an 80% minimum locus completeness threshold (`--max-missing 0.8`). The final dataset contained 9,558 SNPs for downstream genomic analyses.
-
-## VCFtools commands
-
-```bash
 #!/bin/bash
+
+module purge
+module load vcftools/0.1.16
 
 # 1. Missing data per individual
 vcftools \
@@ -44,5 +40,5 @@ vcftools \
   --max-missing 0.8 \
   --recode \
   --out populations_08
-```
+
 
