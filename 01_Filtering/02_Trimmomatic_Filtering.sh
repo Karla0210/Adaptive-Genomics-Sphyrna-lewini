@@ -4,7 +4,7 @@ module load spack
 module load trimmomatic
 
 RAW_READS="/path/to/files/"
-OUT_DIR="trimmed"
+OUT_DIR="clean_reads"
 ADAPTERS="/path/to.adapters/NexteraPE-PE.fa"
 
 mkdir -p ${OUT_DIR}
