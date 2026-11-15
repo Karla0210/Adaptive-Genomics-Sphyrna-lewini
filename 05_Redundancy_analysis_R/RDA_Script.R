@@ -1,16 +1,37 @@
-library("vegan")
-library("psych")
-library("ggplot2")
-setwd("E:/Filtrado populations y VCF p7 r8/RDA/")
-gen <- read.table("RDA_gen.raw", header = TRUE, sep = " ",row.names = 1)
+#!/usr/bin/env Rscript
+
+# RDA analysis - Sphyrna lewini
+# Genotype-environment associations
+# Required packages: vegan, psych, ggplot2
+
+# 01. configuration
+# Run from the folder containing RDA_gen.raw and AMBIENTAL.txt,
+# or set PROJECT_DIR to that folder's absolute path.
+PROJECT_DIR <- "."
+INPUT_GEN  <- file.path(PROJECT_DIR, "RDA_gen.raw")
+INPUT_ENV  <- file.path(PROJECT_DIR, "AMBIENTAL.txt")
+OUTPUT_DIR <- file.path(PROJECT_DIR, "RDA_results")
+
+if (!dir.exists(OUTPUT_DIR)) dir.create(OUTPUT_DIR, recursive = TRUE)
+stopifnot(file.exists(INPUT_GEN), file.exists(INPUT_ENV))
+
+# 02. required packages
+library(vegan)
+library(psych)
+library(ggplot2)
+
+# 03. genotype data
+gen <- read.table(INPUT_GEN, header = TRUE, sep = "", row.names = 1)
 dim(gen)
 
-gen<-gen[,6:9563]
+# Preserved from original workflow: select columns 6:9563 after FID removal.
+# IMPORTANT: Confirm which columns are SNP genotypes before publication.
+gen <- gen[, 6:9563]
 sum(is.na(gen))
 gen.imp <- apply(gen, 2, function(x) replace(x, is.na(x), as.numeric(names(which.max(table(x))))))
 sum(is.na(gen.imp)) # No NAs
 
-env <- read.table("AMBIENTAL.txt", header = TRUE)
+env <- read.table(INPUT_ENV, header = TRUE)
 str(env) # Look at the structure of the data frame
 env$Localidad <- as.factor(env$Localidad) 
 env$ID <- as.character(env$ID)
@@ -25,19 +46,19 @@ env$Localidad <- factor(env$Localidad, levels = c("LP", "LA", "RF", "MZ", "CM", 
 table(env$Localidad)
 
 
-pairs.panels(env[,2:14], scale=T)
-View(env)
+# pairs.panels(env[, 2:14], scale = TRUE)  # Original exploratory view
+# View(env)  # Interactive inspection only
 #To remove variables
 pred <- subset(env, select=-c(ID,Localidad))
 pred <- subset(env, select=-c(ID,Localidad,windV,ClorA,Longitude))
 #New
-pairs.panels(pred, scale=T,cex.cor = 5)
+# pairs.panels(pred, scale = TRUE, cex.cor = 5)  # Saved below
 
 ###SAVE pairs panel###
 library(psych)
 
 png(
-  filename = "E:/Tesis final/ediciones paper/pairs_panels.png",
+  filename = file.path(OUTPUT_DIR, "pairs_panels.png"),
   width = 3000,
   height = 3000,
   res = 300
@@ -51,16 +72,16 @@ pairs.panels(
 
 dev.off()
 
+# Preserved from original workflow: remove the first 5 selected columns.
+# IMPORTANT: These may be actual SNPs, not metadata; verify against the .raw header.
 gen.imp <- gen.imp[, -(1:5)]  
-View(gen.imp)
+# View(gen.imp)  # Interactive inspection only
 
 
+# 04. rda model
 #Graph the RDA
 wolf.rda <- rda(gen.imp ~ ., data = pred, scale = TRUE)
 wolf.rda
-
-
-
 
 
 #Adjust the model based on the number of predictors
@@ -70,6 +91,7 @@ RsquareAdj(wolf.rda)
 #The eigenvalues of the restricted axes reflect the variance explained by each axis
 
 summary(eigenvals(wolf.rda, model = "constrained"))
+pdf(file.path(OUTPUT_DIR, "RDA_diagnostics.pdf"), width = 10, height = 8)
 screeplot(wolf.rda)
 
 #Check significance of RDA
@@ -114,12 +136,16 @@ points(wolf.rda, display="sites", pch=21, cex=1.3, col="gray32", scaling=3, bg=b
 text(wolf.rda, scaling=3, display="bp", col="#0868ac", cex=1, choices=c(1,3))
 legend("topleft", legend=levels(eco), bty="n", col="gray32", pch=21, cex=1, pt.bg=bg)
 
+dev.off()  # Close RDA_diagnostics.pdf
+
 #POSITION IDENTIFICATION
 load.rda <- scores(wolf.rda, choices=c(1:3), display="species")  # Species scores for the first three constrained axes
 
+pdf(file.path(OUTPUT_DIR, "RDA_loading_histograms.pdf"), width = 10, height = 8)
 hist(load.rda[,1], main="Loadings on RDA1")
 hist(load.rda[,2], main="Loadings on RDA2")
-hist(load.rda[,3], main="Loadings on RDA3") 
+hist(load.rda[,3], main="Loadings on RDA3")
+dev.off() 
 
 outliers <- function(x,z){
   lims <- mean(x) + c(-1, 1) * z * sd(x)     # find loadings +/-z sd from mean loading     
@@ -147,7 +173,7 @@ cand$snp <- as.character(cand$snp)
 
 
 ##
-View(pred)
+# View(pred)  # Interactive inspection only
 foo <- matrix(nrow=(ncand), ncol=9) #  9 columns for 9 predictors
 colnames(foo) <- c("Latitude","TA","TM","Salinity","ClorM","PAR","windU","CurrentU","CurrentV")
 
@@ -159,8 +185,7 @@ for (i in 1:length(cand$snp)) {
 }
 
 cand <- cbind.data.frame(cand,foo)  
-View(cand)
-
+# View(cand)  # Interactive inspection only
 
 
 #Investigate to the candidates
@@ -180,11 +205,7 @@ table(cand$predictor)
 ##ClorM= 9, CurrentU= 7, CurrentV= 1, Latitude= 9, PAR= 1, Salinity= 20, TA= 4, TM= 3, windU= 10
 
 
-
-############################################################
-# PREPARE CANDIDATE SNP NAMES FOR PLOTTING
-############################################################
-
+# Prepare candidate snp names for plotting
 # Remove allele suffixes from candidate SNP names
 cand$snp_clean <- gsub(
   "_A$|_T$|_C$|_G$",
@@ -214,10 +235,7 @@ unmatched_candidates <- setdiff(
 unmatched_candidates
 
 
-############################################################
-# DEFINE SNP COLORS
-############################################################
-
+# Define snp colors
 # Background SNPs are light gray;
 # candidate SNPs are highlighted in red with a yellow border
 snp_border <- ifelse(
@@ -239,10 +257,7 @@ snp_size <- ifelse(
 )
 
 
-############################################################
-# DEFINE LOCALITY COLORS
-############################################################
-
+# Define locality colors
 env$Localidad <- factor(
   env$Localidad,
   levels = c(
@@ -267,10 +282,7 @@ individual_colors <- locality_colors[
 ]
 
 
-############################################################
-# FUNCTION TO GENERATE THE FINAL RDA PLOT
-############################################################
-
+# Function to generate the final rda plot
 plot_final_RDA <- function() {
   
   par(
@@ -339,20 +351,14 @@ plot_final_RDA <- function() {
 }
 
 
-############################################################
-# DISPLAY THE FINAL RDA PLOT IN R
-############################################################
-
+# Display the final rda plot in r
 graphics.off()
 
-plot_final_RDA()
+# plot_final_RDA()  # Interactive preview available when using RStudio
 
 
-############################################################
-# OUTPUT DIRECTORY
-############################################################
-
-output_dir <- "E:/Tesis final/ediciones paper"
+# Output directory
+output_dir <- OUTPUT_DIR
 
 if (!dir.exists(output_dir)) {
   dir.create(
@@ -362,10 +368,7 @@ if (!dir.exists(output_dir)) {
 }
 
 
-############################################################
-# SAVE AS PNG
-############################################################
-
+# Save as png
 output_png <- file.path(
   output_dir,
   "RDA_environment_associated_SNPs.png"
@@ -385,10 +388,7 @@ plot_final_RDA()
 dev.off()
 
 
-############################################################
-# SAVE AS PDF
-############################################################
-
+# Save as pdf
 output_pdf <- file.path(
   output_dir,
   "RDA_environment_associated_SNPs.pdf"
@@ -408,10 +408,7 @@ plot_final_RDA()
 dev.off()
 
 
-############################################################
-# SAVE CANDIDATE SNP LIST
-############################################################
-
+# Save candidate snp list
 output_candidates <- file.path(
   output_dir,
   "RDA_candidate_SNPs.csv"
@@ -424,10 +421,14 @@ write.csv(
 )
 
 
-############################################################
-# DISPLAY OUTPUT PATHS
-############################################################
-
+# Display output paths
 output_png
 output_pdf
 output_candidates
+
+# 05. reproducibility record
+writeLines(capture.output(sessionInfo()),
+           file.path(OUTPUT_DIR, "R_session_info.txt"))
+
+
+ 
