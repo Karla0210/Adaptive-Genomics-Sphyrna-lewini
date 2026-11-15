@@ -1,39 +1,14 @@
-# ============================================================================
-# CKMRsim: integrated kinship analysis and final figures
-# Neutral panel of 9,529 SNPs from Sphyrna lewini; 38 juveniles
-# Comparisons: FS/U, HS/U, and FS/HS
-# ============================================================================
+#!/usr/bin/env Rscript
 
-# This script performs the following steps in a single workflow:
-#   1) VCF import and quality control;
-#   2) genotype and allele-frequency preparation;
-#   3) missing-data assessment per individual and pair;
-#   4) CKMRsim simulations calibrated for two missing-data strata;
-#   5) threshold estimation with FNR = 0.01;
-#   6) evaluation of the 703 observed pairs;
-#   7) within- and between-locality summaries and a permutation test;
-#   8) generation of three individual figures and one combined figure.
-#
-# IMPORTANT:
-# - Both missing-data strata belong to the same panel of 9,529 SNPs.
-# - Thresholds and classification preserve both missing-data calibrations.
-# - The figures use a single simulation of the complete panel of 9,502
-#   polymorphic SNPs, so each relationship is represented by one curve.
-# - If the VCF, PopMap, or any parameter changes, set
-#   reutilizar_calculos <- FALSE before rerunning the script.
+# CKMRsim kinship analysis - Sphyrna lewini
+# Neutral SNPs: 9,529 input loci, 9,502 polymorphic loci, 38 individuals
+# Comparisons: FS/U, HS/U, FS/HS
+# Classification uses two missing-data strata; plots use full-panel simulations.
+
+# Packages: vcfR, CKMRsim, dplyr, tidyr, stringr, tibble, ggplot2, patchwork
 
 
-# 00. INSTALLATION: run only once ---------------------------------------------
-
-# install.packages(c(
-#   "remotes", "vcfR", "dplyr", "tidyr", "stringr", "tibble",
-#   "ggplot2", "patchwork"
-# ))
-# remotes::install_github("eriqande/CKMRsim", build_vignettes = TRUE)
-
-
-# 01. SESSION SETUP, PACKAGES, AND PARAMETERS ---------------------------------
-
+# 01. Session setup, packages, and parameters
 rm(list = ls())
 graphics.off()
 gc()
@@ -47,11 +22,9 @@ library(tibble)
 library(ggplot2)
 library(patchwork)
 
-# Change these paths only if the input files are stored elsewhere.
-carpeta_datos <- paste0(
-  "E:/Filtrado populations y VCF p7 r8/",
-  "Filtrados_new/CKMRsim/"
-)
+# Input and output paths
+PROJECT_DIR <- "."
+carpeta_datos <- PROJECT_DIR
 
 archivo_vcf <- file.path(
   carpeta_datos,
@@ -98,8 +71,7 @@ message("CKMRsim version: ", packageVersion("CKMRsim"))
 message("Output directory: ", carpeta_salida)
 
 
-# 02. IMPORT VCF AND POPMAP ---------------------------------------------------
-
+# 02. Import vcf and popmap
 vcf_9529 <- read.vcfR(
   archivo_vcf,
   verbose = FALSE
@@ -143,8 +115,7 @@ message(
 )
 
 
-# 03. BIALLELIC SNP AND MISSING-DATA QUALITY CONTROL --------------------------
-
+# 03. Biallelic snp and missing-data quality control
 ref_9529 <- vcf_9529@fix[, "REF"]
 alt_9529 <- vcf_9529@fix[, "ALT"]
 
@@ -181,8 +152,7 @@ print(missing_individuos_9529, n = Inf, width = Inf)
 print(summary(missing_locus_9529))
 
 
-# 04. CONVERT GENOTYPES TO LONG FORMAT ----------------------------------------
-
+# 04. Convert genotypes to long format
 info_loci_9529 <- tibble(
   Chrom = as.character(vcf_9529@fix[, "CHROM"]),
   Pos = as.numeric(vcf_9529@fix[, "POS"]),
@@ -261,8 +231,7 @@ stopifnot(
 )
 
 
-# 05. RETAIN POLYMORPHIC LOCI -------------------------------------------------
-
+# 05. Retain polymorphic loci
 loci_polimorficos_9529 <- long_genos_9529 %>%
   filter(!is.na(Allele)) %>%
   distinct(Locus, Allele) %>%
@@ -286,8 +255,7 @@ message(
 )
 
 
-# 06. COMPUTE AND REINDEX ALLELE FREQUENCIES ----------------------------------
-
+# 06. Compute and reindex allele frequencies
 allele_freqs_9529 <- long_genos_filtrado_9529 %>%
   filter(!is.na(Allele)) %>%
   count(Locus, Allele, name = "n_alelos") %>%
@@ -334,8 +302,7 @@ saveRDS(
 )
 
 
-# 07. PAIRWISE COMPARABLE LOCI AND MISSING-DATA STRATA ------------------------
-
+# 07. Pairwise comparable loci and missing-data strata
 orden_loci_CKMRsim_9529 <- afreqs_ready_9529 %>%
   distinct(LocIdx, Locus) %>%
   arrange(LocIdx) %>%
@@ -417,8 +384,7 @@ resumen_grupos_missing_9529 <- loci_por_par_9529 %>%
 print(resumen_grupos_missing_9529, n = Inf, width = Inf)
 
 
-# 08. EMPIRICAL PATTERN OF MISSING LOCI BY STRATUM ----------------------------
-
+# 08. Empirical pattern of missing loci by stratum
 calcular_parametros_missing <- function(tabla_pares, matriz_missing) {
   if (nrow(tabla_pares) == 0L) {
     stop("One of the missing-data strata contains no pairs.")
@@ -474,8 +440,7 @@ message(
 )
 
 
-# 09. CREATE CKMRsim OBJECT AND CHECK FOR DUPLICATES --------------------------
-
+# 09. Create ckmrsim object and check for duplicates
 relaciones_CKMRsim <- c("FS", "HS", "U")
 
 ckmr_slew_9529 <- create_ckmr(
@@ -507,8 +472,7 @@ saveRDS(
 )
 
 
-# 10. FINAL SIMULATIONS BY MISSING-DATA STRATUM -------------------------------
-
+# 10. Final simulations by missing-data stratum
 archivo_sim_normal_9529 <- file.path(
   carpeta_salida,
   "Simulacion_CKMRsim_9529_missing_normal.rds"
@@ -561,8 +525,7 @@ print(sim_normal_9529)
 print(sim_alto_9529)
 
 
-# 11. CLASSIFICATION POWER AND THRESHOLDS AT FNR = 0.01 -----------------------
-
+# 11. Classification power and thresholds at fnr = 0.01
 obtener_umbrales <- function(simulacion, grupo, FNR_seleccionado) {
   resultados <- bind_rows(
     mc_sample_simple(simulacion, nu = "FS", de = "U") %>%
@@ -633,8 +596,7 @@ print(
 )
 
 
-# 12. LIKELIHOOD RATIOS FOR THE 703 OBSERVED PAIRS ----------------------------
-
+# 12. Likelihood ratios for the 703 observed pairs
 archivo_LLR_reales_9529 <- file.path(
   carpeta_salida,
   "LLR_parejas_reales_9529.rds"
@@ -716,8 +678,7 @@ stopifnot(
 )
 
 
-# 13. APPLY STRATUM-SPECIFIC THRESHOLDS AND CLASSIFY PAIRS --------------------
-
+# 13. Apply stratum-specific thresholds and classify pairs
 umbrales_wide_9529 <- umbrales_9529 %>%
   select(grupo_missing, comparacion, Lambda_star) %>%
   pivot_wider(
@@ -801,8 +762,7 @@ print(resumen_final_9529, n = Inf, width = Inf)
 print(pares_emparentados_9529, n = Inf, width = Inf)
 
 
-# 14. WITHIN- AND BETWEEN-LOCALITY SUMMARIES ----------------------------------
-
+# 14. Within- and between-locality summaries
 resumen_parentesco_localidad_9529 <- resultados_pares_9529 %>%
   filter(Localidad1 == Localidad2) %>%
   group_by(Localidad = Localidad1) %>%
@@ -878,8 +838,7 @@ print(resumen_estandarizado_localidad_9529, n = Inf, width = Inf)
 print(comparacion_espacial_9529, n = Inf, width = Inf)
 
 
-# 15. PERMUTATION TEST FOR SPATIAL PATTERNS -----------------------------------
-
+# 15. Permutation test for spatial patterns
 estadistico_observado_9529 <-
   mean(
     resultados_pares_9529$HS_U_por_locus[
@@ -953,8 +912,7 @@ resultado_permutacion_9529 <- tibble(
 print(resultado_permutacion_9529, n = Inf, width = Inf)
 
 
-# 16. SINGLE FULL-PANEL SIMULATION FOR FIGURES --------------------------------
-
+# 16. Single full-panel simulation for figures
 # This simulation illustrates the discriminatory power of the full
 # panel of 9,502 polymorphic SNPs. It does not replace the
 # missing-data-calibrated simulations used to classify the 703 pairs.
@@ -1044,8 +1002,7 @@ referencias_figuras_9529 <- referencias_umbrales_9529 %>%
 print(referencias_figuras_9529, n = Inf, width = Inf)
 
 
-# 17. FUNCTION TO GENERATE EACH FIGURE PANEL ----------------------------------
-
+# 17. Function to generate each figure panel
 colores_relaciones <- c(
   "FS" = "#F8766D",
   "HS" = "#7FBF7B",
@@ -1241,8 +1198,7 @@ crear_panel_CKMRsim <- function(
 }
 
 
-# 18. GENERATE AND SAVE FIGURES -----------------------------------------------
-
+# 18. Generate and save figures
 grafica_FS_U_final <- crear_panel_CKMRsim(
   comparacion_seleccionada = "FS/U",
   relaciones_mostrar = c("FS", "U"),
@@ -1262,6 +1218,13 @@ grafica_FS_HS_final <- crear_panel_CKMRsim(
 )
 
 
+
+# Combine the three panels into one figure
+figura_CKMRsim_9529 <- (
+  grafica_FS_U_final /
+    grafica_HS_U_final /
+    grafica_FS_HS_final
+)
 
 print(grafica_FS_U_final)
 print(grafica_HS_U_final)
@@ -1309,8 +1272,18 @@ ggsave(
 
 
 
-# 19. EXPORT FINAL TABLES AND OBJECTS -----------------------------------------
+# Save combined figure
+ggsave(
+  filename = file.path(carpeta_salida, "CKMRsim_combined_9529.png"),
+  plot = figura_CKMRsim_9529,
+  width = 16,
+  height = 24,
+  units = "in",
+  dpi = 300,
+  bg = "white"
+)
 
+# 19. Export final tables and objects
 write.csv(
   missing_individuos_9529,
   file.path(
@@ -1472,12 +1445,6 @@ saveRDS(
   )
 )
 
-writeLines(
-  capture.output(sessionInfo()),
-  file.path(carpeta_salida, "sessionInfo_CKMRsim_9529.txt")
-)
 
 message("Analysis completed successfully.")
 message("Results saved to: ", carpeta_salida)
-
-# END OF SCRIPT
