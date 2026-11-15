@@ -1,0 +1,24 @@
+
+#!/bin/bash
+
+# Input and output directories
+INPUT_DIR="/home/2ebioinfo/DATOS_KARLA/clean_reads"
+FASTQC_DIR="/home/2ebioinfo/DATOS_KARLA/fastqc_results"
+MULTIQC_DIR="/home/2ebioinfo/DATOS_KARLA/multiqc_results"
+
+# Create output directories
+mkdir -p "${FASTQC_DIR}" "${MULTIQC_DIR}"
+
+# Check software versions
+fastqc --version
+multiqc --version
+
+# Run FastQC on trimmed reads
+fastqc "${INPUT_DIR}"/*.fastq.gz \
+  --threads 2 \
+  --outdir "${FASTQC_DIR}"
+
+# Generate the MultiQC summary report
+multiqc "${FASTQC_DIR}" \
+  --outdir "${MULTIQC_DIR}" \
+  --filename multiqc_report.html
