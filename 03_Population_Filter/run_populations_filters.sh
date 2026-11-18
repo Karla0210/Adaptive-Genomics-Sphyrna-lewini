@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 # Population filtering - Sphyrna lewini
