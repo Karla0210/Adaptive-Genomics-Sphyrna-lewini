@@ -1,4 +1,3 @@
-
 #!/bin/bash
 
 # Trimmomatic - Sphyrna lewini
