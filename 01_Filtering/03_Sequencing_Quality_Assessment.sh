@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 
 # FastQC and MultiQC - Sphyrna lewini
