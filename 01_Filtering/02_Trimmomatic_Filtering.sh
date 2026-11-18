@@ -1,7 +1,8 @@
 
-# Select the appropriate modules for Trimmomatic
-module load spack
-module load trimmomatic
+#!/bin/bash
+
+# Trimmomatic - Sphyrna lewini
+# Single-end read trimming and Nextera adapter removal
 
 RAW_READS="/path/to/files/"
 OUT_DIR="clean_reads"
