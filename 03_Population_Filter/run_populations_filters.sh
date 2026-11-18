@@ -1,13 +1,16 @@
+
 #!/bin/bash
 
+# Population filtering - Sphyrna lewini
+# Stacks v2.0: populations
 
 module purge
-module load stacks/2.62
+module load stacks/2.0
 
 # Input files and directories
-STACKS_DIR="/home/2ebioinfo/DATOS_KARLA/stacks_final"
-POPMAP="/home/2ebioinfo/DATOS_KARLA/info/PopMap.txt"
-OUTPUT_BASE="/home/2ebioinfo/DATOS_KARLA/populations"
+STACKS_DIR="results/stacks_final"
+POPMAP="metadata/PopMap.txt"
+OUTPUT_BASE="results/populations"
 
 # Common parameters
 MIN_MAF=0.05
@@ -115,3 +118,6 @@ populations \
 --write-single-snp \
 --vcf \
 > "${OUTPUT_BASE}/populations_p3_r5.log" 2>&1
+
+
+
